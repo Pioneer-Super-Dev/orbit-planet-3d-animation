@@ -1,181 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <title>SolStarter</title>
-        <meta charset="utf-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
-        />
-        <link type="text/css" rel="stylesheet" href="main.css" />
-        <style>
-            body {
-                margin: 0;
-            }
-            svg {
-                display: block;
-            }
-        </style>
-    </head>
-    <body>
-        <!-- Import maps polyfill -->
-        <!-- Remove this when import maps will be widely supported -->
-        <script
-            async
-            src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"
-        ></script>
-
-        <script type="importmap">
-            {
-                "imports": {
-                    "three": "./build/three.module.js"
-                }
-            }
-        </script>
-
-        <script type="module">
-            import * as THREE from 'three'
-
-            import {SVGRenderer} from './jsm/renderers/SVGRenderer.js'
-
-            let camera, scene, renderer
-
-            init()
-            animate()
-
-            function init() {
-                camera = new THREE.PerspectiveCamera(
-                    33,
-                    window.innerWidth / window.innerHeight,
-                    0.1,
-                    100
-                )
-                camera.position.z = 10
-
-                scene = new THREE.Scene()
-                scene.background = new THREE.Color(0xffffff)
-
-                // renderer = new SVGRenderer()
-                renderer = renderer = new THREE.WebGLRenderer({antialias: true})
-                renderer.setSize(window.innerWidth, window.innerHeight)
-                document.body.appendChild(renderer.domElement)
-
-                const radius = 2
-                const segmentCount = 60
-                const segmentPoints = new Array()
-
-                // compute vertices on the perimeter of the circle
-                const SEG_RADS = (2 * Math.PI) / segmentCount
-                for (let i = 0; i < segmentCount; i++) {
-                    const x = radius * Math.sin(i * SEG_RADS)
-                    const z = radius * Math.cos(i * SEG_RADS)
-                    segmentPoints.push(new THREE.Vector3(x, 0, z))
-                }
-
-                // create a smooth closed spline
-                const stemCurve = new THREE.CatmullRomCurve3(segmentPoints, true)
-                const splinePoints = stemCurve.getPoints(360)
-
-                // create geometry using 360 points on the circle
-                const geometry = new THREE.BufferGeometry().setFromPoints(splinePoints)
-
-                // Need to create 1 gradient color for each vertex.
-                // Color gradient for circle starts and ends with the startColor.
-                // Compute gradient colors from startColor to endColor on 180 degress
-                // using linear interpolation.
-                // Then mirror colors on [0-180] degrees to [360-180] degrees
-                const startColor = new THREE.Color('#66edff')
-                const endColor = new THREE.Color('white')
-
-                const vertCnt = geometry.getAttribute('position').count
-                let hemisphereSegmentCount = Math.ceil(vertCnt / 2.0)
-                const lerpInc = 1.0 / hemisphereSegmentCount
-
-                const colors = new Float32Array(vertCnt * 3)
-                for (let i = 0; i <= hemisphereSegmentCount; i++) {
-                    const lerpColor = new THREE.Color(startColor)
-                    lerpColor.lerpHSL(endColor, i * lerpInc)
-
-                    colors[i * 3] = lerpColor.r
-                    colors[i * 3 + 1] = lerpColor.g
-                    colors[i * 3 + 2] = lerpColor.b
-                }
-
-                // gradient color computed for top half of circle.
-                // Now mirror top half colors onto bottom half of circle
-                for (let i = 1, j = (vertCnt - 1) * 3; i < j; i += 3, j -= 3) {
-                    colors[j] = colors[i]
-                    colors[j + 1] = colors[i + 1]
-                    colors[j + 2] = colors[i + 2]
-                }
-
-                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-
-                // create material
-                const material = new THREE.LineBasicMaterial({
-                    vertexColors: THREE.VertexColors,
-                    linewidth: 10,
-                    transparent: true
-                })
-
-                // create line
-                const circle = new THREE.Line(geometry, material)
-                circle.computeLineDistances()
-
-                scene.add(circle)
-
-                window.addEventListener('resize', onWindowResize)
-            }
-
-            function onWindowResize() {
-                camera.aspect = window.innerWidth / window.innerHeight
-                camera.updateProjectionMatrix()
-
-                renderer.setSize(window.innerWidth, window.innerHeight)
-            }
-
-            function animate() {
-                let count = 0
-                const time = performance.now() / 1000
-
-                scene.traverse(function (child) {
-                    child.rotation.x = 0.2
-                    // child.rotation.y = 3.14 / 8
-                    child.rotation.z = -0.2
-
-                    // child.rotation.x = count + ( time / 3 );
-                    // child.rotation.z = count + ( time / 4 );
-
-                    // console.log(child.rotation.x, child.rotation.z)
-                    // count ++;
-                })
-
-                renderer.render(scene, camera)
-                requestAnimationFrame(animate)
-            }
-            export function hexToRgb(hex) {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-                return result
-                    ? {
-                          r: parseInt(result[1], 16),
-                          g: parseInt(result[2], 16),
-                          b: parseInt(result[3], 16)
-                      }
-                    : null
-            }
-
-            export function rgbToHex(rgb) {
-                return (rgb.r << 16) + (rgb.g << 8) + rgb.b
-            }
-
-            export function darken(rgb, factor) {
-                const parsedFactor = 1 - factor
-                return {
-                    r: rgb.r * parsedFactor,
-                    g: rgb.g * parsedFactor,
-                    b: rgb.b * parsedFactor
-                }
-            }
-        </script>
-    </body>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SOLSTARTER</title>
+    <script
+      src="https://kit.fontawesome.com/fc134e75dc.js"
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: Roboto;
+      }
+      canvas {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        z-index: 2;
+        border: none;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="three.min.js"></script>
+    <script src="canvas.js"></script>
+  </body>
 </html>
