@@ -3,14 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <title>SOLSTARTER</title>
-    <script
-      src="https://kit.fontawesome.com/fc134e75dc.js"
-      crossorigin="anonymous"
-    ></script>
     <style>
       body {
         margin: 0;
         font-family: Roboto;
+        overscroll-behavior: none;
       }
       canvas {
         position: fixed;
@@ -18,14 +15,13 @@
         height: 100%;
         left: 0;
         top: 0;
-        z-index: 2;
+        z-index: 1;
         border: none;
         pointer-events: none;
       }
     </style>
   </head>
   <body>
-    <script src="three.min.js"></script>
-    <script src="canvas.js"></script>
+    <script type="module" src="canvas.js"></script>
   </body>
 </html>
