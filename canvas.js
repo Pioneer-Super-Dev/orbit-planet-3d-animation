@@ -1,6 +1,6 @@
 import * as THREE from "./build/three.module.js";
-import { OrbitControls } from "./jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "./jsm/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "./jsm/environments/RoomEnvironment.js";
 
 let scene,
   camera,
@@ -12,12 +12,13 @@ let scene,
   sphere3,
   model,
   group,
-  controls;
+  tube;
 
-let mouseX = 0,
-  mouseY = 0;
-let windowHalfX = window.innerWidth / 2;
-let windowHalfY = window.innerHeight / 2;
+let deltaX = 0;
+let deltaY = 0;
+let weight = 0;
+let timer;
+let moving = false;
 
 init();
 
@@ -26,8 +27,20 @@ function deg2rad(degrees) {
 }
 
 function init() {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.body.appendChild(renderer.domElement);
+
+  const pmremGenerator = new THREE.PMREMGenerator(renderer);
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xffffff);
+  scene.background = new THREE.Color(0x444444);
+  scene.environment = pmremGenerator.fromScene(
+    new RoomEnvironment(),
+    0.04
+  ).texture;
 
   camera = new THREE.PerspectiveCamera(
     75,
@@ -39,24 +52,8 @@ function init() {
 
   camera.position.set(0, 0, 4.5);
 
-  // LIGHTS
-  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
-  hemiLight.color.setHSL(0.6, 1, 0.6);
-  hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-  hemiLight.position.set(0, 0, 0);
-  scene.add(hemiLight);
-  const color = 0xffffff;
-  const intensity = 1;
-  const light = new THREE.DirectionalLight(color, intensity);
-  light.position.set(10, 10, 15);
-  light.target.position.set(0, 0, 0);
-  scene.add(light);
-  scene.add(light.target);
-
-  //Create Renderer and Append Canvas to body
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+  const ambientLight = new THREE.AmbientLight(0x000000);
+  scene.add(ambientLight);
 
   group = new THREE.Group();
 
@@ -75,10 +72,16 @@ function init() {
   animate();
 
   window.addEventListener("resize", onWindowResize);
-  // window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("mousemove", moveHandler);
+}
+
+function mouseStopped() {
+  // the actual function that is called
+  moving = false;
 }
 
 function moveHandler(evt) {
+  moving = true;
   evt.preventDefault();
   deltaX = evt.clientX;
   deltaY = evt.clientY;
@@ -87,112 +90,161 @@ function moveHandler(evt) {
   if (Math.abs(deltaY) === 1) deltaY = 0;
 
   if (evt.clientX > 1000) evt.PageX = 0;
+
+  clearTimeout(timer);
+  timer = setTimeout(mouseStopped, 100);
+}
+
+function generateVertexColors(geometry) {
+  const positionAttribute = geometry.attributes.position;
+
+  const colors = [];
+  const color = new THREE.Color();
+
+  for (let i = 0, il = positionAttribute.count; i < il; i++) {
+    color.setHSL((i / il) * Math.random(), 0.5, 0.5);
+    colors.push(color.r, color.g, color.b);
+  }
+
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 }
 
 function initTorus1() {
-  const geometry = new THREE.TorusGeometry(3.5, 0.02, 500, 500);
-  // var material = new THREE.ShaderMaterial({
-  //   uniforms: {
-  //     color1: {
-  //       value: new THREE.Color(0xa8f4da),
-  //     },
-  //     color2: {
-  //       value: new THREE.Color(0xd7cceb),
-  //     },
-  //   },
-  //   vertexShader: `
-  //   varying vec2 vUv;
+  const geometry = new THREE.TorusGeometry(3.5, 0.02, 1000, 1000);
 
-  //   void main() {
-  //     vUv = uv;
-  //     gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-  //   }
-  // `,
-  //   fragmentShader: `
-  //   uniform vec3 color1;
-  //   uniform vec3 color2;
+  generateVertexColors(geometry);
+  torus1 = new THREE.Mesh(geometry);
+  torus1.material = new THREE.MeshPhysicalMaterial({ color: 0x4dffbe });
+  // Material
+  torus1.material.transparent = false;
+  torus1.material.opacity = 1;
+  torus1.material.depthTest = true;
+  torus1.material.depthWrite = true;
+  torus1.material.alphaTest = 0;
+  torus1.material.visible = true;
+  torus1.material.side = THREE.FrontSide;
+  torus1.material.emissive = 0x000000;
+  torus1.material.roughness = 1;
+  torus1.material.metalness = 1;
+  torus1.material.reflectivity = 0;
+  torus1.material.clearcoat = 0.5;
+  torus1.material.clearcoatRoughtness = 1;
+  torus1.material.flatShading = false;
+  torus1.material.wireframe = false;
+  torus1.material.vertexColors = false;
+  torus1.material.fog = false;
 
-  //   varying vec2 vUv;
-
-  //   void main() {
-
-  //     gl_FragColor = vec4(mix(color1, color2, vUv.y), 1.0);
-  //   }
-  // `,
-  // });
-
-  const texture = new THREE.TextureLoader().load("texture2.png");
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-  });
-
-  torus1 = new THREE.Mesh(geometry, material);
   group.add(torus1);
 }
 
 function initTorus2() {
   const geometry = new THREE.TorusGeometry(3.2, 0.02, 500, 500);
-  // var material = new THREE.ShaderMaterial({
-  //   uniforms: {
-  //     color1: {
-  //       value: new THREE.Color(0x77c8db),
-  //     },
-  //     color2: {
-  //       value: new THREE.Color(0xeeeeee),
-  //     },
-  //   },
-  //   vertexShader: `
-  //   varying vec2 vUv;
 
-  //   void main() {
-  //     vUv = uv;
-  //     gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-  //   }
-  // `,
-  //   fragmentShader: `
-  //   uniform vec3 color1;
-  //   uniform vec3 color2;
+  generateVertexColors(geometry);
+  torus2 = new THREE.Mesh(geometry);
+  torus2.material = new THREE.MeshPhysicalMaterial({ color: 0x77c8db });
+  // Material
+  torus2.material.transparent = false;
+  torus2.material.opacity = 1;
+  torus2.material.depthTest = true;
+  torus2.material.depthWrite = true;
+  torus2.material.alphaTest = 0;
+  torus2.material.visible = true;
+  torus2.material.side = THREE.FrontSide;
+  torus2.material.emissive = 0x000000;
+  torus2.material.roughness = 1;
+  torus2.material.metalness = 1;
+  torus2.material.reflectivity = 0;
+  torus2.material.clearcoat = 0.5;
+  torus2.material.clearcoatRoughtness = 1;
+  torus2.material.flatShading = false;
+  torus2.material.wireframe = false;
+  torus2.material.vertexColors = false;
+  torus2.material.fog = false;
 
-  //   varying vec2 vUv;
-
-  //   void main() {
-
-  //     gl_FragColor = vec4(mix(color1, color2, vUv.y), 1.0);
-  //   }
-  // `,
-  // });
-
-  const texture = new THREE.TextureLoader().load("texture1.png");
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  const material = new THREE.MeshBasicMaterial({ map: texture });
-
-  torus2 = new THREE.Mesh(geometry, material);
   group.add(torus2);
 }
 
 function initSphere1() {
   const geometry = new THREE.SphereGeometry(0.1, 32, 16);
-  const material = new THREE.MeshPhongMaterial({ color: 0xd7cceb });
-  sphere1 = new THREE.Mesh(geometry, material);
+  generateVertexColors(geometry);
+  sphere1 = new THREE.Mesh(geometry);
+  sphere1.material = new THREE.MeshPhysicalMaterial({ color: 0x9853a2 });
+  // Material
+  sphere1.material.transparent = false;
+  sphere1.material.opacity = 1;
+  sphere1.material.depthTest = true;
+  sphere1.material.depthWrite = true;
+  sphere1.material.alphaTest = 0;
+  sphere1.material.visible = true;
+  sphere1.material.side = THREE.FrontSide;
+  sphere1.material.emissive = 0x000000;
+  sphere1.material.roughness = 1;
+  sphere1.material.metalness = 1;
+  sphere1.material.reflectivity = 0.5;
+  sphere1.material.clearcoat = 1;
+  sphere1.material.clearcoatRoughtness = 0;
+  sphere1.material.flatShading = false;
+  sphere1.material.wireframe = false;
+  sphere1.material.vertexColors = false;
+  sphere1.material.fog = false;
+
   sphere1.position.z = 0.11;
   group.add(sphere1);
 }
 
 function initSphere2() {
   const geometry = new THREE.SphereGeometry(0.1, 32, 16);
-  const material = new THREE.MeshPhongMaterial({ color: 0x99c5f0 });
-  sphere2 = new THREE.Mesh(geometry, material);
+  generateVertexColors(geometry);
+  sphere2 = new THREE.Mesh(geometry);
+  sphere2.material = new THREE.MeshPhysicalMaterial({ color: 0x1564cb });
+  // Material
+  sphere2.material.transparent = false;
+  sphere2.material.opacity = 1;
+  sphere2.material.depthTest = true;
+  sphere2.material.depthWrite = true;
+  sphere2.material.alphaTest = 0;
+  sphere2.material.visible = true;
+  sphere2.material.side = THREE.FrontSide;
+  sphere2.material.emissive = 0x000000;
+  sphere2.material.roughness = 1;
+  sphere2.material.metalness = 1;
+  sphere2.material.reflectivity = 0.5;
+  sphere2.material.clearcoat = 1;
+  sphere2.material.clearcoatRoughtness = 0;
+  sphere2.material.flatShading = false;
+  sphere2.material.wireframe = false;
+  sphere2.material.vertexColors = false;
+  sphere2.material.fog = false;
+
   sphere2.position.z = 0.11;
   group.add(sphere2);
 }
 
 function initSphere3() {
   const geometry = new THREE.SphereGeometry(0.1, 32, 16);
-  const material = new THREE.MeshPhongMaterial({ color: 0x73efd1 });
-  sphere3 = new THREE.Mesh(geometry, material);
+  generateVertexColors(geometry);
+  sphere3 = new THREE.Mesh(geometry);
+  sphere3.material = new THREE.MeshPhysicalMaterial({ color: 0x00ffa3 });
+  // Material
+  sphere3.material.transparent = false;
+  sphere3.material.opacity = 1;
+  sphere3.material.depthTest = true;
+  sphere3.material.depthWrite = true;
+  sphere3.material.alphaTest = 0;
+  sphere3.material.visible = true;
+  sphere3.material.side = THREE.FrontSide;
+  sphere3.material.emissive = 0x000000;
+  sphere3.material.roughness = 1;
+  sphere3.material.metalness = 1;
+  sphere3.material.reflectivity = 0.5;
+  sphere3.material.clearcoat = 1;
+  sphere3.material.clearcoatRoughtness = 0;
+  sphere3.material.flatShading = false;
+  sphere3.material.wireframe = false;
+  sphere3.material.vertexColors = false;
+  sphere3.material.fog = false;
+
   sphere3.position.z = 0.11;
   group.add(sphere3);
 }
@@ -203,8 +255,9 @@ function initModel() {
     "logo.glb",
     function (gltf) {
       model = gltf.scene;
+      // model.scale.set(8, 8, 8);
       model.scale.set(0.03, 0.03, 0.03);
-      model.position.set(-0.5, -1.5, 0);
+      model.position.y = -1;
       scene.add(model);
     },
     undefined,
@@ -215,32 +268,17 @@ function initModel() {
 }
 
 function groupRotate() {
-  const X = -60 + deltaX / 200;
-  const Y = 20 + deltaY / 200;
-  group.rotation.set(deg2rad(X), deg2rad(Y), 0);
-}
+  if (moving && weight < 1) {
+    weight += 0.05;
+    const X = -60 + (deltaX * weight) / 200;
+    const Y = 20 + (deltaY * weight) / 200;
+    group.rotation.set(deg2rad(X), deg2rad(Y), 0);
+  }
+  // else if (weight > 0) weight -= 0.05;
 
-function groupRotate1() {
-  // group.rotation.x += (mouseX - group.rotation.x) * 0.000002;
-  group.rotation.y += (mouseY - group.rotation.y) * 0.00001;
-
-  // if (group.rotation.x <= 1 && group.rotation.x >= -1) {
-  //   group.rotation.x += finalRotationY * 0.1;
-  // }
-  // if (group.rotation.x > 1) {
-  //   group.rotation.x = 1;
-  // }
-
-  // if (group.rotation.x < -1) {
-  //   group.rotation.x = -1;
-  // }
-}
-
-function onPointerMove(event) {
-  if (event.isPrimary === false) return;
-
-  mouseX = event.clientX - windowHalfX;
-  mouseY = event.clientY - windowHalfY;
+  // const X = -60 + deltaX / 200;
+  // const Y = 20 + deltaY / 200;
+  // group.rotation.set(deg2rad(X), deg2rad(Y), 0);
 }
 
 //Animate
@@ -248,8 +286,6 @@ function animate() {
   //Call animate function frequently
   requestAnimationFrame(animate);
   const timer = 0.0005 * Date.now();
-
-  // groupRotate();
 
   sphere1.position.x = Math.cos(timer) * 3.21;
   sphere1.position.y = Math.sin(timer) * 3.21;
@@ -262,19 +298,13 @@ function animate() {
 
   if (model) model.rotation.y += 0.02;
 
-  groupRotate1();
-  // camera.position.x += (mouseX - camera.position.x) * 0.000005;
-  // camera.position.y += (-mouseY - camera.position.y) * 0.000005;
-
-  // camera.lookAt(scene.position);
+  if (group) groupRotate();
 
   //Render Scene and Camera
   renderer.render(scene, camera);
 }
 
 function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
