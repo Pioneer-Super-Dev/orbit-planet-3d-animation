@@ -11,14 +11,12 @@ let scene,
   sphere2,
   sphere3,
   model,
-  group,
-  tube;
+  group;
 
-let deltaX = 0;
-let deltaY = 0;
-let weight = 0;
-let timer;
-let moving = false;
+let mouseX = 0;
+let mouseY = 0;
+let windowHalfX = window.innerWidth / 2;
+let windowHalfY = window.innerHeight / 2;
 
 init();
 
@@ -72,27 +70,16 @@ function init() {
   animate();
 
   window.addEventListener("resize", onWindowResize);
-  window.addEventListener("mousemove", moveHandler);
+  // window.addEventListener("mousemove", moveHandler);
+  document.addEventListener("pointermove", onPointerMove);
 }
 
-function mouseStopped() {
-  // the actual function that is called
-  moving = false;
-}
+function onPointerMove(event) {
+  if (event.isPrimary === false) return;
 
-function moveHandler(evt) {
-  moving = true;
-  evt.preventDefault();
-  deltaX = evt.clientX;
-  deltaY = evt.clientY;
-
-  if (Math.abs(deltaX) === 1) deltaX = 0;
-  if (Math.abs(deltaY) === 1) deltaY = 0;
-
-  if (evt.clientX > 1000) evt.PageX = 0;
-
-  clearTimeout(timer);
-  timer = setTimeout(mouseStopped, 100);
+  mouseX = event.clientX - windowHalfX;
+  mouseY = event.clientY - windowHalfY;
+  console.log(mouseX, mouseY);
 }
 
 function generateVertexColors(geometry) {
@@ -126,9 +113,9 @@ function initTorus1() {
   torus1.material.emissive = 0x000000;
   torus1.material.roughness = 1;
   torus1.material.metalness = 1;
-  torus1.material.reflectivity = 0;
-  torus1.material.clearcoat = 0.5;
-  torus1.material.clearcoatRoughtness = 1;
+  torus1.material.reflectivity = 0.5;
+  torus1.material.clearcoat = 1;
+  torus1.material.clearcoatRoughtness = 0;
   torus1.material.flatShading = false;
   torus1.material.wireframe = false;
   torus1.material.vertexColors = false;
@@ -154,9 +141,9 @@ function initTorus2() {
   torus2.material.emissive = 0x000000;
   torus2.material.roughness = 1;
   torus2.material.metalness = 1;
-  torus2.material.reflectivity = 0;
-  torus2.material.clearcoat = 0.5;
-  torus2.material.clearcoatRoughtness = 1;
+  torus2.material.reflectivity = 0.5;
+  torus2.material.clearcoat = 1;
+  torus2.material.clearcoatRoughtness = 0;
   torus2.material.flatShading = false;
   torus2.material.wireframe = false;
   torus2.material.vertexColors = false;
@@ -252,11 +239,11 @@ function initSphere3() {
 function initModel() {
   const loader = new GLTFLoader();
   loader.load(
-    "logo.glb",
+    "model.glb",
     function (gltf) {
       model = gltf.scene;
-      // model.scale.set(8, 8, 8);
-      model.scale.set(0.03, 0.03, 0.03);
+      model.scale.set(8, 8, 8);
+      // model.scale.set(0.03, 0.03, 0.03);
       model.position.y = -1;
       scene.add(model);
     },
@@ -268,17 +255,12 @@ function initModel() {
 }
 
 function groupRotate() {
-  if (moving && weight < 1) {
-    weight += 0.05;
-    const X = -60 + (deltaX * weight) / 200;
-    const Y = 20 + (deltaY * weight) / 200;
-    group.rotation.set(deg2rad(X), deg2rad(Y), 0);
-  }
-  // else if (weight > 0) weight -= 0.05;
-
-  // const X = -60 + deltaX / 200;
-  // const Y = 20 + deltaY / 200;
-  // group.rotation.set(deg2rad(X), deg2rad(Y), 0);
+  group.rotation.x +=
+    (deg2rad(-60 + mouseX / (window.innerWidth / 20)) - group.rotation.x) *
+    0.05;
+  group.rotation.y +=
+    (deg2rad(20 - mouseY / (window.innerHeight / 20)) - group.rotation.y) *
+    0.05;
 }
 
 //Animate
@@ -299,12 +281,13 @@ function animate() {
   if (model) model.rotation.y += 0.02;
 
   if (group) groupRotate();
-
   //Render Scene and Camera
   renderer.render(scene, camera);
 }
 
 function onWindowResize() {
+  windowHalfX = window.innerWidth / 2;
+  windowHalfY = window.innerHeight / 2;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
